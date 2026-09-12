@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'">
+  <title>Cyber Quest</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    #cq-need-keyboard { display: none; }
+    @media (pointer: coarse) and (hover: none) {
+      #cq-need-keyboard {
+        display: flex; position: fixed; inset: 0; z-index: 999999;
+        flex-direction: column; align-items: center; justify-content: center;
+        gap: 14px; padding: 32px 24px; text-align: center;
+        background: #05060f; color: #e8f0ff;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #cq-need-keyboard .cq-k-title { font-size: 20px; font-weight: 700; color: #6bf0ff; letter-spacing: .04em; }
+      #cq-need-keyboard .cq-k-body  { font-size: 15px; line-height: 1.6; max-width: 30rem; opacity: .9; }
+      #cq-need-keyboard .cq-k-ar    { font-size: 15px; line-height: 1.9; max-width: 30rem; opacity: .9; direction: rtl; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="cq-need-keyboard">
+    <div class="cq-k-title">OPEN THIS ON A LAPTOP</div>
+    <div class="cq-k-body">Cyber Quest is played with the arrow keys and the space bar, so it needs a computer with a keyboard.</div>
+    <div class="cq-k-ar">لعبة سايبر كويست تنلعب بأسهم لوحة المفاتيح ومفتاح المسافة، فتحها لازم يكون من لابتوب أو كمبيوتر.</div>
+  </div>
+
+  <!-- Drag region for frameless window -->
+  <div id="drag-region"></div>
+
+  <!-- HOSN splash — waits for user input (click anywhere or Enter) before fading into the title.
+       Logo path is exactly assets/hosn-logo.png — drop the PNG there. The image element
+       logs success/failure to the dev console so you can debug if it doesn't appear. -->
+  <div id="hosn-splash">
+    <img id="hosn-logo"
+         src="assets/hosn-logo.png"
+         alt="HOSN"
+         onload="console.log('[CQ] HOSN logo loaded from', this.src);"
+         onerror="console.warn('[CQ] HOSN logo NOT found at', this.src, '— using text fallback. Save the file at assets/hosn-logo.png inside the Cyber Quest folder.'); this.style.display='none'; document.getElementById('hosn-fallback').style.display='block';" />
+    <div id="hosn-fallback" style="display:none;">HOSN</div>
+    <div id="hosn-continue">CLICK ANYWHERE OR PRESS ENTER TO CONTINUE</div>
+  </div>
+
+  <!-- Main canvas -->
+  <canvas id="game" width="1280" height="720" aria-label="Cyber Quest game"></canvas>
+
+  <!-- Title / Menu Overlay -->
+  <div id="title-screen" class="overlay visible">
+    <div class="title-inner">
+      <div class="title-badge" id="title-badge">CYBER AWARENESS · FOR EVERY KID</div>
+      <h1 class="title-logo" id="title-logo" data-text="CYBER QUEST">CYBER QUEST</h1>
+      <div class="title-sub" id="title-sub">The internet doesn’t protect itself. A journey through the 5 cyber threats every kid should beat.</div>
+
+      <div class="difficulty-picker">
+        <div class="difficulty-label">CHOOSE YOUR DIFFICULTY</div>
+        <div class="difficulty-buttons">
+          <button class="btn diff-btn diff-beginner" data-diff="BEGINNER">
+            <span class="diff-title">BEGINNER</span>
+            <span class="diff-sub">Fundamentals</span>
+          </button>
+          <button class="btn diff-btn diff-intermediate is-active" data-diff="INTERMEDIATE">
+            <span class="diff-title">INTERMEDIATE</span>
+            <span class="diff-sub">Everyday scenarios</span>
+          </button>
+          <button class="btn diff-btn diff-advanced" data-diff="ADVANCED">
+            <span class="diff-title">ADVANCED</span>
+            <span class="diff-sub">Expert level</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="title-buttons">
+        <button class="btn btn-primary" id="btn-play">▶  PLAY</button>
+        <button class="btn" id="btn-leaderboard">🏆 LEADERBOARD</button>
+        <button class="btn" id="btn-howto">HOW TO PLAY</button>
+        <button class="btn" id="btn-professor">PROFESSOR MODE</button>
+        <button class="btn" id="btn-credits">CREDITS</button>
+      </div>
+
+      <div class="title-levels">
+        <span class="chip chip-1">PHISHING</span>
+        <span class="chip chip-2">PASSWORD</span>
+        <span class="chip chip-3">MALWARE</span>
+        <span class="chip chip-4">PRIVACY</span>
+        <span class="chip chip-5">RANSOMWARE</span>
+      </div>
+
+      <div class="title-footer" id="title-footer">
+        <span id="title-presented-by">A Cyber Awareness Tool for Children</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- How-to-play panel -->
+  <div id="howto-screen" class="overlay">
+    <div class="panel glass">
+      <h2>HOW TO PLAY</h2>
+      <div class="howto-grid">
+        <div class="howto-card">
+          <div class="howto-icon">⟵  ⟶</div>
+          <div class="howto-title">Move</div>
+          <div class="howto-desc">Left / Right arrow keys</div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-icon">↑</div>
+          <div class="howto-title">Jump &amp; Double-Jump</div>
+          <div class="howto-desc">Space or Up arrow. Hold for higher. Tap again in mid-air to double-jump.</div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-icon">?</div>
+          <div class="howto-title">Question Blocks</div>
+          <div class="howto-desc">Run into a glowing <b>?</b> — click an answer to earn a power-up, miss to get penalized</div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-icon">◆</div>
+          <div class="howto-title">Coins</div>
+          <div class="howto-desc">+10 each. Collect every coin in a level for an extra life.</div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-icon">▲</div>
+          <div class="howto-title">Stomp</div>
+          <div class="howto-desc">Jump on enemies to defeat them</div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-icon">⎋</div>
+          <div class="howto-title">Pause</div>
+          <div class="howto-desc">Press Esc any time</div>
+        </div>
+      </div>
+
+      <div class="howto-section-title correct">POWER-UPS · correct answer</div>
+      <div class="howto-power-list">
+        <div class="howto-power-item">
+          <div class="howto-power-name">Antivirus Shield</div>
+          <div class="howto-power-desc">Blocks one hit · 12 s</div>
+        </div>
+        <div class="howto-power-item">
+          <div class="howto-power-name">2FA Token</div>
+          <div class="howto-power-desc">+1 extra life</div>
+        </div>
+        <div class="howto-power-item">
+          <div class="howto-power-name">Patch Update</div>
+          <div class="howto-power-desc">Immune to damage · 8 s</div>
+        </div>
+      </div>
+
+      <div class="howto-section-title penalty">PENALTIES · wrong answer</div>
+      <div class="howto-power-list">
+        <div class="howto-power-item penalty">
+          <div class="howto-power-name">DDoS Attack</div>
+          <div class="howto-power-desc">−50% run speed · 6 s</div>
+        </div>
+        <div class="howto-power-item penalty">
+          <div class="howto-power-name">Malware</div>
+          <div class="howto-power-desc">7 enemies appear nearby</div>
+        </div>
+        <div class="howto-power-item penalty">
+          <div class="howto-power-name">Buffer Overflow</div>
+          <div class="howto-power-desc">Controls inverted · 2 s</div>
+        </div>
+      </div>
+
+      <div class="panel-buttons">
+        <button class="btn btn-primary" data-close="howto-screen">GOT IT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Professor Mode panel — full question bank with correct answers highlighted -->
+  <div id="professor-screen" class="overlay">
+    <div class="panel glass professor-panel">
+      <h2>PROFESSOR MODE</h2>
+      <div class="professor-intro">
+        Every question in the game, grouped by difficulty and threat. Correct answers are highlighted in green. Explanations appear below each question. No gameplay required — this is the verification view.
+      </div>
+      <div class="professor-tabs" id="prof-tabs">
+        <button class="prof-tab is-active" data-prof-diff="BEGINNER">BEGINNER</button>
+        <button class="prof-tab" data-prof-diff="INTERMEDIATE">INTERMEDIATE</button>
+        <button class="prof-tab" data-prof-diff="ADVANCED">ADVANCED</button>
+      </div>
+      <div class="professor-list" id="prof-list"></div>
+      <div class="panel-buttons">
+        <button class="btn btn-primary" data-close="professor-screen">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credits panel -->
+  <div id="credits-screen" class="overlay">
+    <div class="panel glass">
+      <h2>CREDITS</h2>
+      <div class="credits-body">
+        <p><b id="credits-title">Cyber Quest</b></p>
+        <p>Design &amp; Engineering — <i>Hamad Mohamed Alkuwaiti</i></p>
+        <p>An interactive cyber-awareness platformer for children.</p>
+        <p class="credits-small">Run through 5 cyber threat domains. Spot phishing, build strong passwords, dodge malware, protect your privacy, and beat ransomware. Answer right for power-ups. Wrong answers teach you what to watch for next time.</p>
+      </div>
+      <div class="panel-buttons">
+        <button class="btn btn-primary" data-close="credits-screen">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause panel -->
+  <div id="pause-screen" class="overlay">
+    <div class="panel glass">
+      <h2>PAUSED</h2>
+      <div class="panel-buttons panel-buttons-vertical">
+        <button class="btn btn-primary" id="btn-resume">RESUME</button>
+        <button class="btn btn-matrix" id="btn-skip-level">⚡  ESCAPE THE MATRIX</button>
+        <button class="btn" id="btn-restart-level">RESTART LEVEL</button>
+        <button class="btn" id="btn-quit-title">QUIT TO TITLE</button>
+      </div>
+      <div class="pause-hint">Escape the Matrix jumps past this level. On the final level it runs the Grade Report.</div>
+    </div>
+  </div>
+
+  <!-- Level intro / outro overlay -->
+  <div id="level-intro" class="overlay level-intro">
+    <div class="level-intro-inner glass">
+      <div class="level-intro-num" id="li-num">LEVEL 01</div>
+      <div class="level-intro-name" id="li-name">PHISHING LAKE</div>
+      <div class="level-intro-tag" id="li-tag">Spot the bait · Fake senders · Suspicious links</div>
+      <div class="level-intro-desc" id="li-desc">Description of what this threat looks like in the real world.</div>
+      <div class="level-intro-footer">
+        <button class="btn btn-primary" id="btn-level-continue">ENTER  ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question modal -->
+  <div id="question-modal" class="overlay question-modal">
+    <div class="question-card glass">
+      <div class="question-topbar">
+        <div class="question-topic" id="q-topic">PHISHING LAKE · Spot the Bait</div>
+      </div>
+      <div class="question-text" id="q-text">Question text goes here.</div>
+      <div class="question-answers" id="q-answers"></div>
+      <div class="question-hint" id="q-hint">Click an answer.</div>
+    </div>
+  </div>
+
+  <!-- Stop & Think scenario modal — real-world cyber awareness card -->
+  <div id="scenario-modal" class="overlay question-modal scenario-modal">
+    <div class="question-card glass scenario-card">
+      <div class="scenario-banner">⚡ STOP &amp; THINK</div>
+      <div class="scenario-title" id="sc-title">Scenario title</div>
+      <div class="scenario-situation" id="sc-situation">Situation text goes here.</div>
+      <div class="question-text" id="sc-q">What do you do?</div>
+      <div class="question-answers" id="sc-answers"></div>
+      <div class="question-hint">Click an answer.</div>
+    </div>
+  </div>
+
+  <!-- Password Strength Builder mini-game (Password Castle) -->
+  <div id="pw-modal" class="overlay question-modal phish-modal">
+    <div class="phish-card glass">
+      <div class="phish-banner mg-banner-pw">🔒 BUILD A STRONG PASSWORD TO UNLOCK THE CASTLE</div>
+      <div class="phish-instructions">Type a password. As you type, the rules below light up. Open the gate by meeting <b>all 6 rules</b>.</div>
+      <input type="text" id="pw-input" class="pw-input" placeholder="Type your password here…" autocomplete="off" spellcheck="false" />
+      <div class="pw-strength-bar"><div id="pw-strength-fill"></div></div>
+      <div class="pw-rules" id="pw-rules"></div>
+      <div class="phish-actions">
+        <button class="btn btn-phish-open" id="btn-pw-submit" disabled>🔓 OPEN THE GATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Safe vs Malware Sorter mini-game (Malware Forest) -->
+  <div id="mw-modal" class="overlay question-modal phish-modal">
+    <div class="phish-card glass">
+      <div class="phish-banner mg-banner-mw">🦠 SAFE OR MALWARE? — SORT EVERY FILE</div>
+      <div class="phish-instructions">For each file, click <b>TRUST</b> or <b>DELETE</b>. Then commit your sort.</div>
+      <div class="mg-sort-grid" id="mw-grid"></div>
+      <div class="phish-actions">
+        <button class="btn btn-phish-report" id="btn-mw-judge" disabled>⚖️ COMMIT SORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share vs Don't Share Sorter (Privacy Plaza) -->
+  <div id="pv-modal" class="overlay question-modal phish-modal">
+    <div class="phish-card glass">
+      <div class="phish-banner mg-banner-pv">👁 SHARE OR KEEP PRIVATE? — SORT EVERY ITEM</div>
+      <div class="phish-instructions">For each piece of info, decide whether it&apos;s <b>OK to share online</b> or should stay <b>private</b>.</div>
+      <div class="mg-sort-grid" id="pv-grid"></div>
+      <div class="phish-actions">
+        <button class="btn btn-phish-report" id="btn-pv-judge" disabled>⚖️ COMMIT SORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ransomware Decision (Ransomware Vault) -->
+  <div id="rw-modal" class="overlay question-modal phish-modal">
+    <div class="phish-card glass">
+      <div class="phish-banner mg-banner-rw">💾 ALL FILES LOCKED — DECIDE NOW</div>
+      <div class="rw-lockscreen" id="rw-lockscreen"></div>
+      <div class="phish-actions">
+        <button class="btn btn-phish-report" id="btn-rw-pay">💸 PAY $500</button>
+        <button class="btn btn-phish-open"   id="btn-rw-restore">💾 RESTORE FROM BACKUP</button>
+      </div>
+      <div class="rw-outcome" id="rw-outcome"></div>
+    </div>
+  </div>
+
+  <!-- Phishing Email mini-game modal -->
+  <div id="phish-modal" class="overlay question-modal phish-modal">
+    <div class="phish-card glass">
+      <div class="phish-banner">📧 PHISHING EMAIL — TAP ANYTHING SUSPICIOUS</div>
+      <div class="phish-instructions">Click every part of this email that looks suspicious. Then choose <b>REPORT</b> if it&apos;s phishing or <b>OPEN</b> if it&apos;s safe.</div>
+      <div class="phish-email">
+        <div class="phish-row"><span class="phish-label">From:</span><span class="phish-part" id="phish-from">sender@example.com</span></div>
+        <div class="phish-row"><span class="phish-label">Subject:</span><span class="phish-part" id="phish-subject">Subject line</span></div>
+        <div class="phish-divider"></div>
+        <div class="phish-body" id="phish-body"></div>
+      </div>
+      <div class="phish-flag-counter">Flagged: <span id="phish-flag-count">0</span> · Suspicious in this email: <span id="phish-flag-needed">?</span></div>
+      <div class="phish-actions">
+        <button class="btn btn-phish-report" id="btn-phish-report">🚨 REPORT (it&apos;s phishing)</button>
+        <button class="btn btn-phish-open" id="btn-phish-open">📂 OPEN (it&apos;s safe)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback panel — explanation is the main event, power-up/penalty minor. -->
+  <div id="feedback-overlay" class="overlay feedback-overlay">
+    <div class="feedback-inner glass">
+      <div class="feedback-stamp" id="fb-stamp">CORRECT</div>
+      <div class="feedback-explain" id="fb-explain"></div>
+      <div class="feedback-answer" id="fb-answer"></div>
+      <div class="feedback-msg" id="fb-msg"></div>
+      <div class="feedback-footer">
+        <button class="btn btn-primary" id="btn-feedback-continue">CONTINUE  ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Network Stack sidebar — always visible during gameplay. Current layer
+       glows in its accent color; transitions pulse on level change. -->
+  <div id="stack-sidebar">
+    <div class="stack-title">THREAT MAP</div>
+    <div class="stack-layers">
+      <div class="stack-layer" data-layer="RANSOMWARE">
+        <span class="stack-num">5</span>
+        <span class="stack-name">RANSOMWARE</span>
+      </div>
+      <div class="stack-layer" data-layer="PRIVACY">
+        <span class="stack-num">4</span>
+        <span class="stack-name">PRIVACY</span>
+      </div>
+      <div class="stack-layer" data-layer="MALWARE">
+        <span class="stack-num">3</span>
+        <span class="stack-name">MALWARE</span>
+      </div>
+      <div class="stack-layer" data-layer="PASSWORD">
+        <span class="stack-num">2</span>
+        <span class="stack-name">PASSWORD</span>
+      </div>
+      <div class="stack-layer" data-layer="PHISHING">
+        <span class="stack-num">1</span>
+        <span class="stack-name">PHISHING</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <div class="hud-pill hud-lives">
+        <span class="hud-label">LIVES</span>
+        <span class="hud-value" id="hud-lives">♥ ♥ ♥</span>
+      </div>
+      <div class="hud-pill hud-packets">
+        <span class="hud-label">COINS</span>
+        <span class="hud-value" id="hud-packets">0</span>
+      </div>
+      <div class="hud-pill hud-score">
+        <span class="hud-label">SCORE</span>
+        <span class="hud-value" id="hud-score">0</span>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div class="hud-level" id="hud-level">L1 · PHISHING</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-pill hud-correct">
+        <span class="hud-label">ANSWERED</span>
+        <span class="hud-value"><span id="hud-correct">0</span> / <span id="hud-total">0</span></span>
+      </div>
+      <div class="hud-pill hud-power" id="hud-power">
+        <span class="hud-label">POWER</span>
+        <span class="hud-value" id="hud-power-name">—</span>
+        <div class="hud-power-bar"><div id="hud-power-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- End Screen (Cyber Security Report) -->
+  <div id="end-screen" class="overlay end-screen">
+    <div class="end-card glass">
+      <div class="end-header">
+        <div class="end-sub" id="end-sub">CYBER QUEST · CYBER AWARENESS REPORT</div>
+        <h1 class="end-title">CYBER SECURITY REPORT</h1>
+        <div class="end-student">
+          <span class="end-student-label">Player name —</span>
+          <input type="text" id="end-student-input" class="end-student-input" maxlength="20" placeholder="Type your name" autocomplete="off" spellcheck="false" />
+          <span class="end-student-hint">(saved to leaderboard)</span>
+        </div>
+      </div>
+
+      <div class="end-body">
+        <div class="end-grade-wrap">
+          <div class="end-grade-ring">
+            <div class="end-grade-letter" id="end-letter">A</div>
+            <div class="end-grade-pct" id="end-pct">92%</div>
+          </div>
+          <div class="end-grade-note" id="end-comment">Strong cyber awareness across the board.</div>
+        </div>
+
+        <div class="end-stats">
+          <div class="stat-card">
+            <div class="stat-label">Scenarios Correct</div>
+            <div class="stat-val" id="end-correct">14 / 16</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Coins Collected</div>
+            <div class="stat-val" id="end-packets">73</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Domains Cleared</div>
+            <div class="stat-val" id="end-levels">5 / 5</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Lives Remaining</div>
+            <div class="stat-val" id="end-lives">2</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Score</div>
+            <div class="stat-val" id="end-score">12,400</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Run Time</div>
+            <div class="stat-val" id="end-time">07:42</div>
+          </div>
+        </div>
+
+        <div class="end-topics">
+          <div class="end-section-title">SKILL BREAKDOWN BY THREAT DOMAIN</div>
+          <div id="end-topic-bars"></div>
+          <div class="end-summary" id="end-summary"></div>
+          <div class="end-foradults">This Cyber Security Report summarizes the player's cyber-awareness skills across the five threat domains. Use the strengths and "needs work" areas as starting points for real conversations about online safety.</div>
+        </div>
+      </div>
+
+      <div class="end-footer">
+        <button class="btn btn-primary" id="btn-save-score">🏆 SAVE TO LEADERBOARD</button>
+        <button class="btn" id="btn-print-report">🖨️ PRINT / SAVE REPORT</button>
+        <button class="btn" id="btn-play-again">PLAY AGAIN</button>
+        <button class="btn" id="btn-back-title">TITLE SCREEN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard-screen" class="overlay">
+    <div class="panel glass leaderboard-panel">
+      <h2>🏆 LEADERBOARD</h2>
+      <div class="leaderboard-intro">Top runs across all difficulties, ranked by questions correct and then by score.</div>
+      <div class="leaderboard-tabs" id="lb-tabs">
+        <button class="lb-tab is-active" data-lb-filter="ALL">ALL</button>
+        <button class="lb-tab" data-lb-filter="BEGINNER">BEGINNER</button>
+        <button class="lb-tab" data-lb-filter="INTERMEDIATE">INTERMEDIATE</button>
+        <button class="lb-tab" data-lb-filter="ADVANCED">ADVANCED</button>
+      </div>
+      <div class="leaderboard-list" id="lb-list"></div>
+      <div class="panel-buttons">
+        <button class="btn" id="btn-lb-clear">CLEAR BOARD</button>
+        <button class="btn btn-primary" data-close="leaderboard-screen">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over screen -->
+  <div id="gameover-screen" class="overlay end-screen">
+    <div class="end-card glass">
+      <div class="end-header">
+        <h1 class="end-title glitch" data-text="YOU GOT HACKED!">YOU GOT HACKED!</h1>
+        <div class="end-sub">A cyber threat got through. Stay alert and try again.</div>
+      </div>
+      <div class="end-footer">
+        <button class="btn btn-primary" id="btn-retry-run">TRY AGAIN</button>
+        <button class="btn" id="btn-go-title">TITLE SCREEN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts - load in dependency order -->
+  <script src="src/whitelabel.js"></script>
+  <script src="src/utils.js"></script>
+  <script src="src/questions.js"></script>
+  <script src="src/scenarios.js"></script>
+  <script src="src/phishing.js"></script>
+  <script src="src/minigames.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/particles.js"></script>
+  <script src="src/effects.js"></script>
+  <script src="src/input.js"></script>
+  <script src="src/player.js"></script>
+  <script src="src/enemies.js"></script>
+  <script src="src/levels.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

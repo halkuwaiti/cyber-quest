@@ -1,0 +1,10 @@
+{
+  "name": "cyber-quest",
+  "productName": "Cyber Quest",
+  "version": "1.0.0",
+  "description": "A cyber-awareness platformer for children. Teaches phishing, password safety, malware, privacy and ransomware through gameplay. Runs in the browser.",
+  "author": "Hamad Alkuwaiti",
+  "license": "CC-BY-NC-4.0",
+  "homepage": "https://halkuwaiti.github.io/cyber-quest/",
+  "private": false
+}
